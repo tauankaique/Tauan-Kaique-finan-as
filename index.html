@@ -81,6 +81,7 @@ h2 button{border:1px solid var(--line);background:none;border-radius:999px;paddi
   </div>
 </header>
 <input type="file" id="file" accept="image/*" hidden>
+<input type="file" id="arqbk" accept=".json,application/json" hidden>
 <div class="tabs">
   <button class="tab on" id="t0" onclick="vai(0)">Resumo</button>
   <button class="tab" id="t1" onclick="vai(1)">Metas e contas</button>
@@ -196,7 +197,7 @@ function render(){
     '<div class="resumo"><div class="card"><div class="mute">Entradas do mês</div><div class="big" style="color:var(--green)">+'+brl(tot.r)+'</div></div><div class="card"><div class="mute">Saídas do mês</div><div class="big" style="color:var(--red)">−'+brl(tot.d)+'</div></div></div>'+
     '<h2>Metas <button onclick="addMeta()">Nova meta</button></h2>'+metas+
     '<h2>Contas a pagar <button onclick="addConta()">Nova conta</button></h2>'+contas+
-    '<div class="mini" style="margin:0 0 8px"><button onclick="ativaAvisos()">Ativar avisos no celular</button></div>'+
+    '<div class="mini" style="margin:0 0 8px"><button onclick="ativaAvisos()">Ativar avisos no celular</button><button onclick="exportar()">Exportar backup</button><button onclick="importar()">Importar backup</button></div>'+
     '<h2>Mês a mês</h2><div class="card comp">'+comp+'</div>'+
     '<h2>Últimas transações</h2>'+(hist.map(t=>{const c=CATS.find(x=>x[0]===t.cat);return'<div class="tx"><span class="dot" style="background:'+(t.tipo==='r'?'var(--green)':c?c[2]:'#9aa0a6')+'"></span><div class="d"><div>'+esc(t.desc||(t.tipo==='r'?'Receita':c?c[1]:'Despesa'))+'</div><div class="mute">'+fmtD(t.data)+(c?' · '+c[1]:'')+'</div></div><span class="v" style="color:var(--'+(t.tipo==='r'?'green':'red')+')">'+(t.tipo==='r'?'+':'−')+brl(t.valor)+'</span><button class="x" onclick="del(\'tx\',\''+t.id+'\')" aria-label="Apagar">×</button></div>'}).join('')||'<div class="vazio">Sem transações neste mês.</div>');
   const av=$('av');
@@ -209,6 +210,26 @@ $('file').onchange=e=>{
   const img=new Image();
   img.onload=()=>{const c=document.createElement('canvas');c.width=c.height=96;const s=Math.min(img.width,img.height);c.getContext('2d').drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,96,96);S.foto=c.toDataURL('image/jpeg',.8);save();render()};
   img.src=URL.createObjectURL(f);
+};
+function exportar(){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));
+  a.download='financas-backup-'+isoLocal(new Date())+'.json';
+  document.body.appendChild(a);a.click();a.remove();
+}
+function importar(){$('arqbk').click()}
+$('arqbk').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const d=JSON.parse(rd.result);
+      if(!d||!Array.isArray(d.tx))throw 0;
+      if(!confirm('Substituir os dados atuais pelo backup?'))return;
+      S=Object.assign({tx:[],metas:[],contas:[],foto:''},d);save();render();alert('Backup restaurado!');
+    }catch(x){alert('Arquivo de backup inválido.')}
+  };
+  rd.readAsText(f);e.target.value='';
 };
 render();try{navigator.serviceWorker.register('sw.js')}catch(e){}avisa();
 </script>
